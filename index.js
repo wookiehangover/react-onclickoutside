@@ -28,39 +28,33 @@
 }(this, function () {
   "use strict";
 
-  // Use a parallel array because we can't use
-  // objects as keys, they get toString-coerced
-  var registeredComponents = [];
-  var handlers = [];
-
-  var IGNORE_CLASS = 'ignore-react-onclickoutside';
+  var IGNORE_CLASS = "ignore-react-onclickoutside";
 
   return {
-    componentDidMount: function() {
-      if(!this.handleClickOutside)
-        throw new Error("Component lacks a handleClickOutside(event) function for processing outside click events.");
 
-      var fn = this.__outsideClickHandler = (function(localNode, eventHandler) {
-        return function(evt) {
-          var source = evt.target;
-          var found = false;
-          // If source=local then this event came from "somewhere"
-          // inside and should be ignored. We could handle this with
-          // a layered approach, too, but that requires going back to
-          // thinking in terms of Dom node nesting, running counter
-          // to React's "you shouldn't care about the DOM" philosophy.
-          while(source.parentNode) {
-            found = (source === localNode || source.classList.contains(IGNORE_CLASS));
-            if(found) return;
-            source = source.parentNode;
-          }
-          eventHandler(evt);
+    __outsideClickHandler: function(evt) {
+      var localNode = this.getDOMNode();
+      var source = evt.target;
+      var found = false;
+      // If source=local then this event came from "somewhere"
+      // inside and should be ignored. We could handle this with
+      // a layered approach, too, but that requires going back to
+      // thinking in terms of Dom node nesting, running counter
+      // to React's "you shouldn't care about the DOM" philosophy.
+      while(source.parentNode) {
+        found = (source === localNode || source.classList.contains(IGNORE_CLASS));
+        if(found) {
+          return;
         }
-      }(this.getDOMNode(), this.handleClickOutside));
+        source = source.parentNode;
+      }
+      this.handleClickOutside(evt);
+    },
 
-      var pos = registeredComponents.length;
-      registeredComponents.push(this);
-      handlers[pos] = fn;
+    componentDidMount: function() {
+      if (!this.handleClickOutside) {
+        throw new Error("Component lacks a handleClickOutside(event) function for processing outside click events.");
+      }
 
       // If there is a truthy disableOnClickOutside property for this
       // component, don't immediately start listening for outside events.
@@ -71,15 +65,6 @@
 
     componentWillUnmount: function() {
       this.disableOnClickOutside();
-      this.__outsideClickHandler = false;
-      var pos = registeredComponents.indexOf(this);
-      if( pos>-1) {
-        if (handlers[pos]) {
-          // clean up so we don't leak memory
-          handlers.splice(pos, 1);
-          registeredComponents.splice(pos, 1);
-        }
-      }
     },
 
     /**
@@ -87,9 +72,8 @@
      * for clicks and touches outside of this element.
      */
     enableOnClickOutside: function() {
-      var fn = this.__outsideClickHandler;
-      document.addEventListener("mousedown", fn);
-      document.addEventListener("touchstart", fn);
+      document.addEventListener("mousedown", this.__outsideClickHandler);
+      document.addEventListener("touchstart", this.__outsideClickHandler);
     },
 
     /**
@@ -97,9 +81,8 @@
      * for clicks and touches outside of this element.
      */
     disableOnClickOutside: function(fn) {
-      var fn = this.__outsideClickHandler;
-      document.removeEventListener("mousedown", fn);
-      document.removeEventListener("touchstart", fn);
+      document.removeEventListener("mousedown", this.__outsideClickHandler);
+      document.removeEventListener("touchstart", this.__outsideClickHandler);
     }
   };
 
